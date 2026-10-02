@@ -1,0 +1,17 @@
+{
+  "name": "estudo-descarte-irregular-gcm-apgo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Aplicativo de campo e planilha do estudo de caso de descarte irregular – GCM APGO (Inspetoria de Inteligência)",
+  "scripts": {
+    "login": "clasp login",
+    "push": "clasp push",
+    "pull": "clasp pull",
+    "abrir": "clasp open-script",
+    "implantar": "clasp push && clasp create-deployment --description \"atualizacao\"",
+    "implantacoes": "clasp list-deployments"
+  },
+  "devDependencies": {
+    "@google/clasp": "^3.0.0"
+  }
+}

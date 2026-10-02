@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>GCM APGO – Descarte Irregular</title>
+<style>
+  :root {
+    --navy: #1F3864; --navy-2: #2F5496; --bg: #EEF2F8; --card: #FFFFFF; --txt: #1B2333; --muted: #5E6B80;
+    --line: #D5DCE8; --ok: #1E7B3A; --ok-bg: #DFF3E5; --warn: #9A6400; --warn-bg: #FFF4D6; --err: #B42318; --err-bg: #FDE7E5;
+    --charlie: #DDEBF7; --delta: #E2EFDA; --alfa: #FFF2CC; --bravo: #FCE4D6;
+    --r: 14px;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--txt);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; font-size: 16px; }
+  .hidden { display: none !important; }
+  header.top { background: var(--navy); color: #fff; padding: 14px 16px 12px; position: sticky; top: 0; z-index: 5;
+    box-shadow: 0 2px 8px rgba(0,0,0,.18); }
+  header.top .inst { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; opacity: .8; }
+  header.top h1 { margin: 2px 0 0; font-size: 18px; font-weight: 700; }
+  header.top .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .btn-link { background: none; border: 1px solid rgba(255,255,255,.4); color: #fff; border-radius: 8px; padding: 6px 10px; font-size: 13px; }
+  main { padding: 14px 14px 110px; max-width: 640px; margin: 0 auto; }
+  .card { background: var(--card); border-radius: var(--r); padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(20,40,80,.08); }
+  .card h2 { margin: 0 0 12px; font-size: 15px; color: var(--navy); text-transform: uppercase; letter-spacing: .04em; }
+  label.lbl { display: block; font-size: 13px; font-weight: 600; color: var(--muted); margin: 12px 0 6px; }
+  label.lbl:first-child { margin-top: 0; }
+  input[type=text], input[type=password], input[type=date], input[type=tel], select, textarea {
+    width: 100%; padding: 12px; font-size: 16px; border: 1.5px solid var(--line); border-radius: 10px; background: #fff; color: var(--txt); }
+  textarea { min-height: 90px; resize: vertical; }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--navy-2); }
+  .btn { display: block; width: 100%; padding: 15px; font-size: 16px; font-weight: 700; border: 0; border-radius: 12px;
+    background: var(--navy); color: #fff; cursor: pointer; }
+  .btn:disabled { opacity: .5; }
+  .btn.sec { background: #fff; color: var(--navy); border: 1.5px solid var(--navy); }
+  .btn.small { padding: 10px 12px; font-size: 14px; width: auto; display: inline-block; }
+  .seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 6px; }
+  .seg button, .chip { padding: 12px 6px; border: 1.5px solid var(--line); background: #fff; border-radius: 10px;
+    font-size: 14px; font-weight: 600; color: var(--txt); cursor: pointer; }
+  .seg button.on { background: var(--navy); border-color: var(--navy); color: #fff; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { padding: 9px 12px; font-weight: 500; }
+  .chip.on { background: var(--navy); border-color: var(--navy); color: #fff; }
+  .vol { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .vol button { padding: 10px 4px; border: 1.5px solid var(--line); background: #fff; border-radius: 10px; cursor: pointer; }
+  .vol button b { display: block; font-size: 22px; }
+  .vol button span { font-size: 11px; color: var(--muted); }
+  .vol button.on { border-color: var(--navy); background: var(--claro, #D9E2F3); box-shadow: inset 0 0 0 1.5px var(--navy); }
+  .vol-desc { font-size: 13px; color: var(--muted); margin-top: 6px; min-height: 18px; }
+  .resumo { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .resumo div { background: var(--bg); border-radius: 10px; padding: 10px 6px; text-align: center; }
+  .resumo small { display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+  .resumo strong { font-size: 18px; }
+  .equipe-tag { border-radius: 8px; padding: 2px 8px; color: #1B2333 !important; }
+  .eq-Charlie { background: var(--charlie); } .eq-Delta { background: var(--delta); } .eq-Alfa { background: var(--alfa); } .eq-Bravo { background: var(--bravo); }
+  .aviso { border-radius: 10px; padding: 10px 12px; font-size: 14px; margin-bottom: 12px; }
+  .aviso.warn { background: var(--warn-bg); color: var(--warn); }
+  .aviso.err { background: var(--err-bg); color: var(--err); }
+  .aviso.ok { background: var(--ok-bg); color: var(--ok); }
+  .ponto { display: flex; gap: 12px; align-items: center; padding: 14px; border: 1.5px solid var(--line); border-radius: 12px;
+    margin-bottom: 8px; background: #fff; cursor: pointer; width: 100%; text-align: left; font: inherit; color: inherit; }
+  .ponto .num { flex: 0 0 44px; height: 44px; border-radius: 10px; background: var(--navy); color: #fff; display: grid;
+    place-items: center; font-weight: 800; font-size: 17px; }
+  .ponto .info { flex: 1; min-width: 0; }
+  .ponto .end { font-size: 14px; font-weight: 600; line-height: 1.3; }
+  .ponto .sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .ponto.feito { border-color: #9BD3AE; background: #F4FBF6; }
+  .ponto.feito .num { background: var(--ok); }
+  .ponto .st { font-size: 12px; font-weight: 700; white-space: nowrap; }
+  .ponto.feito .st { color: var(--ok); }
+  .ponto:not(.feito) .st { color: var(--warn); }
+  .gps { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 14px; }
+  .gps .v { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; }
+  .fotos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 10px; }
+  .fotos .f { position: relative; aspect-ratio: 1; border-radius: 10px; overflow: hidden; background: #ddd; }
+  .fotos img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .fotos .x { position: absolute; top: 4px; right: 4px; width: 28px; height: 28px; border-radius: 50%; border: 0;
+    background: rgba(0,0,0,.65); color: #fff; font-size: 16px; line-height: 28px; padding: 0; }
+  .add-foto { display: flex; align-items: center; justify-content: center; gap: 8px; border: 2px dashed var(--navy-2);
+    border-radius: 12px; padding: 16px; color: var(--navy); font-weight: 700; cursor: pointer; background: #F7F9FD; }
+  .cond { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); }
+  .anterior { background: #F7F9FD; border-left: 4px solid var(--navy-2); border-radius: 8px; padding: 10px 12px; font-size: 14px; margin-bottom: 12px; }
+  .bottom { position: fixed; left: 0; right: 0; bottom: 0; padding: 12px 14px calc(12px + env(safe-area-inset-bottom));
+    background: rgba(238,242,248,.96); border-top: 1px solid var(--line); z-index: 6; }
+  .bottom .inner { max-width: 640px; margin: 0 auto; }
+  .overlay { position: fixed; inset: 0; background: rgba(15,25,45,.72); z-index: 20; display: grid; place-items: center; color: #fff; text-align: center; padding: 24px; }
+  .spin { width: 46px; height: 46px; border: 4px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; animation: s 1s linear infinite; margin: 0 auto 14px; }
+  @keyframes s { to { transform: rotate(360deg); } }
+  .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: 96px; background: #1B2333; color: #fff; padding: 12px 16px;
+    border-radius: 10px; font-size: 14px; z-index: 30; max-width: 92%; box-shadow: 0 6px 18px rgba(0,0,0,.25); }
+  .muted { color: var(--muted); font-size: 13px; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .req { color: var(--err); }
+  .login-logo { text-align: center; padding: 24px 0 8px; color: var(--navy); }
+  .login-logo b { display: block; font-size: 20px; }
+</style>
+</head>
+<body>
+
+<!-- ============ LOGIN ============ -->
+<section id="tela-login">
+  <header class="top"><div class="inst">GCM APGO • Inspetoria de Inteligência</div><h1>Estudo de Caso – Descarte Irregular</h1></header>
+  <main>
+    <div class="login-logo"><b>Registro de Visitas</b><span class="muted">05/10/2026 a 05/11/2026</span></div>
+    <div class="card">
+      <label class="lbl" for="in-agentes">Agentes / matrícula <span class="req">*</span></label>
+      <input id="in-agentes" type="text" placeholder="Ex.: GCM Silva 1234 / GCM Souza 5678" autocomplete="off">
+      <label class="lbl" for="in-pin">PIN de acesso <span class="req">*</span></label>
+      <input id="in-pin" type="password" inputmode="numeric" placeholder="PIN fornecido pela Inspetoria">
+      <div id="login-msg" class="aviso err hidden" style="margin-top:12px"></div>
+      <div style="margin-top:16px"><button class="btn" id="bt-entrar">Entrar</button></div>
+    </div>
+  </main>
+</section>
+
+<!-- ============ INÍCIO (escala do dia) ============ -->
+<section id="tela-inicio" class="hidden">
+  <header class="top">
+    <div class="row">
+      <div><div class="inst">GCM APGO • Inspetoria de Inteligência</div><h1>Pontos do dia</h1></div>
+      <button class="btn-link" id="bt-sair">Sair</button>
+    </div>
+  </header>
+  <main>
+    <div id="fila-aviso" class="aviso warn hidden"></div>
+    <div id="periodo-aviso" class="aviso warn hidden"></div>
+    <div class="card">
+      <label class="lbl" for="in-data">Data da visita</label>
+      <input id="in-data" type="date">
+      <div class="resumo" style="margin-top:12px">
+        <div><small>Dia</small><strong id="r-dia">–</strong></div>
+        <div><small>Equipe</small><strong id="r-equipe">–</strong></div>
+        <div><small>Semana</small><strong id="r-semana">–</strong></div>
+      </div>
+      <p class="muted" id="r-agentes" style="margin:12px 0 0"></p>
+    </div>
+    <div class="card">
+      <h2 id="lista-titulo">Pontos</h2>
+      <div id="lista-pontos"></div>
+      <button class="btn sec" id="bt-outro" style="margin-top:6px">Registrar outro ponto (reposição)</button>
+      <div id="outro-box" class="hidden" style="margin-top:10px">
+        <select id="sel-outro"></select>
+        <div style="margin-top:8px"><button class="btn" id="bt-outro-ir">Abrir ficha</button></div>
+      </div>
+    </div>
+    <button class="btn sec" id="bt-atualizar">Atualizar situação</button>
+  </main>
+</section>
+
+<!-- ============ FICHA DE CAMPO ============ -->
+<section id="tela-ficha" class="hidden">
+  <header class="top">
+    <div class="row">
+      <div style="min-width:0"><div class="inst" id="f-cab">Ficha de campo</div><h1 id="f-titulo">Ponto</h1></div>
+      <button class="btn-link" id="bt-voltar">Voltar</button>
+    </div>
+  </header>
+  <main>
+    <div id="f-anterior" class="anterior hidden"></div>
+
+    <div class="card">
+      <h2>Identificação</h2>
+      <div class="muted" id="f-endereco" style="font-size:14px;color:var(--txt);font-weight:600"></div>
+      <div class="muted" id="f-regional" style="margin-top:4px"></div>
+      <div class="row2" style="margin-top:12px">
+        <div><label class="lbl" for="f-semana">Semana</label><select id="f-semana">
+          <option value="1">Semana 1</option><option value="2">Semana 2</option><option value="3">Semana 3</option><option value="4">Semana 4</option></select></div>
+        <div><label class="lbl" for="f-equipe">Equipe</label><select id="f-equipe">
+          <option>Charlie</option><option>Delta</option><option>Alfa</option><option>Bravo</option></select></div>
+      </div>
+      <p class="muted" id="f-datahora" style="margin:10px 0 0"></p>
+    </div>
+
+    <div class="card">
+      <h2>Localização (GPS)</h2>
+      <div class="gps"><div><div class="v" id="gps-v">Obtendo localização…</div><div class="muted" id="gps-p"></div></div>
+        <button class="btn small sec" id="bt-gps">Atualizar</button></div>
+    </div>
+
+    <div class="card">
+      <h2>Situação do local</h2>
+      <label class="lbl">Existe lixo no local? <span class="req">*</span></label>
+      <div class="seg" data-campo="lixo"><button>Sim</button><button>Não</button></div>
+
+      <label class="lbl">Tipo de área <span class="req">*</span></label>
+      <div class="seg" data-campo="area"><button>Pública</button><button>Particular</button><button>Não identificada</button></div>
+
+      <div id="bloco-residuo">
+        <label class="lbl">Tipo de resíduo (marque todos) <span class="req">*</span></label>
+        <div class="chips" data-multi="residuos">
+          <button class="chip">Doméstico</button><button class="chip">Entulho/construção</button>
+          <button class="chip">Volumoso (móveis/eletros)</button><button class="chip">Poda/vegetal</button>
+          <button class="chip">Pneus</button><button class="chip">Outro</button>
+        </div>
+      </div>
+
+      <label class="lbl">Volume <span class="req">*</span></label>
+      <div class="vol" id="vol">
+        <button data-v="0"><b>0</b><span>Sem resíduo</span></button>
+        <button data-v="1"><b>1</b><span>Pequeno</span></button>
+        <button data-v="2"><b>2</b><span>Médio</span></button>
+        <button data-v="3"><b>3</b><span>Grande</span></button>
+      </div>
+      <div class="vol-desc" id="vol-desc">Até 1 m³: sacolas • 1–5 m³: caminhonete • acima de 5 m³: caminhão</div>
+
+      <label class="lbl">Condição do tempo <span class="req">*</span></label>
+      <div class="seg" data-campo="tempo"><button>Sol</button><button>Nublado</button><button>Chuva</button><button>Pós-chuva</button></div>
+    </div>
+
+    <div class="card">
+      <h2>Prefeitura e ocorrências</h2>
+      <label class="lbl">Houve limpeza pela Prefeitura desde a última visita? <span class="req">*</span></label>
+      <div class="seg" data-campo="limpeza"><button>Sim</button><button>Não</button><button>Não confirmado</button></div>
+      <div class="cond hidden" id="bloco-limpeza">
+        <label class="lbl" for="f-data-limpeza">Data da limpeza</label><input id="f-data-limpeza" type="date">
+      </div>
+
+      <label class="lbl">Flagrante de descarte durante a visita? <span class="req">*</span></label>
+      <div class="seg" data-campo="flagrante"><button>Sim</button><button>Não</button></div>
+
+      <label class="lbl">Apreensão de veículo? <span class="req">*</span></label>
+      <div class="seg" data-campo="apreensao"><button>Sim</button><button>Não</button></div>
+      <div class="cond hidden" id="bloco-apreensao">
+        <label class="lbl" for="f-placa">Placa / tipo de veículo <span class="req">*</span></label>
+        <input id="f-placa" type="text" placeholder="Ex.: ABC1D23 – caminhonete" autocapitalize="characters">
+        <label class="lbl" for="f-rai">Nº RAI / BO <span class="req">*</span></label>
+        <input id="f-rai" type="text" placeholder="Número do registro">
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Fotos <span class="muted" style="text-transform:none;letter-spacing:0">(mínimo 3)</span></h2>
+      <p class="muted" style="margin:0 0 10px">Panorâmica, detalhe do resíduo e referência do endereço. Data, hora, ponto e GPS são gravados na foto.</p>
+      <label class="add-foto" for="in-foto">📷 Tirar / adicionar foto</label>
+      <input id="in-foto" type="file" accept="image/*" capture="environment" multiple class="hidden">
+      <div class="fotos" id="fotos"></div>
+    </div>
+
+    <div class="card">
+      <h2>Observações</h2>
+      <textarea id="f-obs" placeholder="Vestígios, horário provável do descarte, relatos de moradores, iluminação, câmeras particulares próximas…"></textarea>
+    </div>
+
+    <div id="f-erros" class="aviso err hidden"></div>
+  </main>
+  <div class="bottom"><div class="inner"><button class="btn" id="bt-enviar">Enviar visita</button></div></div>
+</section>
+
+<div class="overlay hidden" id="overlay"><div><div class="spin"></div><div id="overlay-msg">Enviando…</div></div></div>
+<div class="toast hidden" id="toast"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ---------- Estado ---------- */
+  var S = {
+    pin: '', agentes: '', cfg: null, status: {}, data: '', ponto: null,
+    form: {}, fotos: [], gps: null
+  };
+  var VOL_DESC = ['Local limpo, sem descarte visível', 'Até 1 m³ (sacolas, poucos objetos)',
+    'De 1 a 5 m³ (carga de uma caminhonete)', 'Acima de 5 m³ (carga de caminhão, entulho em quantidade)'];
+
+  function $(id) { return document.getElementById(id); }
+  function show(id) { ['tela-login', 'tela-inicio', 'tela-ficha'].forEach(function (t) { $(t).classList.toggle('hidden', t !== id); }); window.scrollTo(0, 0); }
+  function toast(msg, ms) { var t = $('toast'); t.textContent = msg; t.classList.remove('hidden'); clearTimeout(t._h); t._h = setTimeout(function () { t.classList.add('hidden'); }, ms || 3200); }
+  function overlay(msg) { if (msg) { $('overlay-msg').textContent = msg; $('overlay').classList.remove('hidden'); } else { $('overlay').classList.add('hidden'); } }
+  function ls(k, v) { try { if (v === undefined) return localStorage.getItem(k); if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) { return null; } }
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function hojeISO() { var d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+  function isoBR(iso) { var p = iso.split('-'); return p[2] + '/' + p[1] + '/' + p[0]; }
+  function uid() { return 'v' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+
+  /* ---------- Chamada ao servidor (Apps Script) ---------- */
+  function servidor(fn) {
+    var args = Array.prototype.slice.call(arguments, 1);
+    return new Promise(function (ok, falha) {
+      if (!window.google || !google.script || !google.script.run) { falha(new Error('sem-conexao')); return; }
+      var r = google.script.run.withSuccessHandler(ok).withFailureHandler(falha);
+      r[fn].apply(r, args);
+    });
+  }
+
+  /* ---------- Escala ---------- */
+  function diaIdx(iso) { var p = iso.split('-'); var d = new Date(Date.UTC(+p[0], +p[1] - 1, +p[2])); return (d.getUTCDay() + 6) % 7; }
+  function diasDesdeInicio(iso) {
+    var a = S.cfg.inicio.split('-'), b = iso.split('-');
+    return Math.round((Date.UTC(+b[0], +b[1] - 1, +b[2]) - Date.UTC(+a[0], +a[1] - 1, +a[2])) / 86400000);
+  }
+  function escala(iso) {
+    var k = diasDesdeInicio(iso);
+    var di = diaIdx(iso);
+    var semana = Math.min(4, Math.max(1, Math.floor(k / 7) + 1));
+    return {
+      k: k, dia: S.cfg.diasSemana[di], diaIdx: di,
+      equipe: S.cfg.equipes[((k % 4) + 4) % 4],
+      semana: semana,
+      grupo: S.cfg.grupos[di],
+      foraCampo: k < 0 || k >= S.cfg.diasCampo,
+      consolidacao: k >= S.cfg.diasCampo && k < S.cfg.diasTotal
+    };
+  }
+  function pontoPorNum(n) { for (var i = 0; i < S.cfg.pontos.length; i++) if (S.cfg.pontos[i].n === n) return S.cfg.pontos[i]; return null; }
+  function diaDoPonto(n) { for (var i = 0; i < S.cfg.grupos.length; i++) { var g = S.cfg.grupos[i]; if (n >= g[0] && n <= g[1]) return S.cfg.diasSemana[i]; } return ''; }
+  function visitaNaSemana(n, sem) { var l = S.status[n] || []; for (var i = l.length - 1; i >= 0; i--) if (l[i].s === sem) return l[i]; return null; }
+
+  /* ---------- Login ---------- */
+  function entrar() {
+    var pin = $('in-pin').value.trim(), ag = $('in-agentes').value.trim();
+    var msg = $('login-msg'); msg.classList.add('hidden');
+    if (!ag) { msg.textContent = 'Informe os agentes e a matrícula.'; msg.classList.remove('hidden'); return; }
+    if (!pin) { msg.textContent = 'Informe o PIN.'; msg.classList.remove('hidden'); return; }
+    overlay('Conectando…');
+    servidor('getConfig', pin).then(function (r) {
+      overlay();
+      if (!r || !r.ok) { msg.textContent = (r && r.msg) || 'Não foi possível entrar.'; msg.classList.remove('hidden'); return; }
+      S.pin = pin; S.agentes = ag; S.cfg = r; S.status = r.status || {};
+      ls('gcm_pin', pin); ls('gcm_agentes', ag); ls('gcm_cfg', JSON.stringify(r));
+      iniciar();
+    }, function (err) {
+      overlay();
+      var em = (err && err.message) || String(err || '');
+      if (em === 'sem-conexao') {
+        msg.innerHTML = 'Este arquivo foi aberto fora do Google. Abra o <b>link do App da Web</b> (termina em <b>/exec</b>) gerado em Implantar → Nova implantação.';
+        msg.classList.remove('hidden'); return;
+      }
+      if (navigator.onLine && em) {
+        msg.textContent = 'Erro no servidor: ' + em;
+        msg.classList.remove('hidden'); return;
+      }
+      var cache = ls('gcm_cfg');
+      if (cache && ls('gcm_pin') === pin) { S.pin = pin; S.agentes = ag; S.cfg = JSON.parse(cache); S.status = S.cfg.status || {}; ls('gcm_agentes', ag); iniciar(); toast('Sem conexão: usando dados salvos no aparelho.'); }
+      else { msg.textContent = 'Sem conexão com a internet. Tente novamente.'; msg.classList.remove('hidden'); }
+    });
+  }
+
+  function iniciar() {
+    S.data = S.data || hojeISO();
+    $('in-data').value = S.data;
+    show('tela-inicio');
+    renderInicio();
+    atualizarFila();
+    processarFila();
+  }
+
+  /* ---------- Tela inicial ---------- */
+  function renderInicio() {
+    var e = escala(S.data);
+    $('r-dia').textContent = e.dia;
+    $('r-equipe').innerHTML = '<span class="equipe-tag eq-' + e.equipe + '">' + e.equipe + '</span>';
+    $('r-semana').textContent = e.foraCampo ? '–' : e.semana;
+    $('r-agentes').textContent = 'Agentes: ' + S.agentes;
+
+    var av = $('periodo-aviso');
+    if (e.k < 0) { av.textContent = 'A pesquisa começa em ' + isoBR(S.cfg.inicio) + '. Registros feitos antes disso serão tratados como teste.'; av.classList.remove('hidden'); }
+    else if (e.consolidacao) { av.textContent = 'Período de consolidação: as visitas de campo terminaram em 01/11. Use "outro ponto" apenas para reposições pendentes.'; av.classList.remove('hidden'); }
+    else if (e.foraCampo) { av.textContent = 'Data fora do período da pesquisa.'; av.classList.remove('hidden'); }
+    else av.classList.add('hidden');
+
+    var g = e.grupo, html = '', feitos = 0;
+    for (var n = g[0]; n <= g[1]; n++) {
+      var p = pontoPorNum(n), v = visitaNaSemana(n, e.semana);
+      if (v) feitos++;
+      html += '<button class="ponto' + (v ? ' feito' : '') + '" data-n="' + n + '">' +
+        '<div class="num">' + pad(n) + '</div>' +
+        '<div class="info"><div class="end">' + esc(p.end) + '</div>' +
+        '<div class="sub">' + (v ? 'Enviado em ' + v.d + ' • Equipe ' + esc(v.e) + ' • Volume ' + v.v : 'Pendente na Semana ' + e.semana) + '</div></div>' +
+        '<div class="st">' + (v ? '✓' : 'Abrir') + '</div></button>';
+    }
+    $('lista-titulo').textContent = 'Pontos de ' + e.dia + ' (' + feitos + '/' + (g[1] - g[0] + 1) + ' enviados)';
+    $('lista-pontos').innerHTML = html;
+    Array.prototype.forEach.call(document.querySelectorAll('#lista-pontos .ponto'), function (b) {
+      b.addEventListener('click', function () { abrirFicha(+b.getAttribute('data-n')); });
+    });
+
+    var opts = '';
+    S.cfg.pontos.forEach(function (p) { opts += '<option value="' + p.n + '">' + pad(p.n) + ' (' + diaDoPonto(p.n) + ') – ' + esc(p.end) + '</option>'; });
+    $('sel-outro').innerHTML = opts;
+  }
+
+  function atualizarStatus(silencioso) {
+    if (!silencioso) overlay('Atualizando…');
+    return servidor('getStatus', S.pin).then(function (r) {
+      overlay();
+      if (r && r.ok) { S.status = r.status || {}; renderInicio(); if (!silencioso) toast('Situação atualizada.'); }
+      else if (r && !r.ok) { toast(r.msg); }
+    }, function () { overlay(); if (!silencioso) toast('Sem conexão. Tente mais tarde.'); });
+  }
+
+  /* ---------- Ficha ---------- */
+  function abrirFicha(n) {
+    var p = pontoPorNum(n), e = escala(S.data);
+    S.ponto = p; S.form = { residuos: [] }; S.fotos = []; S.gps = null;
+    $('f-cab').textContent = 'Ficha de campo • ' + diaDoPonto(n);
+    $('f-titulo').textContent = 'Ponto ' + pad(n);
+    $('f-endereco').textContent = p.end;
+    $('f-regional').textContent = 'Regional: ' + p.reg + (p.sit === 'MONITORADO' ? ' • Ponto monitorado' : '');
+    $('f-semana').value = String(e.semana);
+    $('f-equipe').value = e.equipe;
+    $('f-datahora').textContent = 'Data: ' + isoBR(S.data) + ' • Hora registrada no envio';
+    $('f-obs').value = ''; $('f-placa').value = ''; $('f-rai').value = ''; $('f-data-limpeza').value = '';
+    Array.prototype.forEach.call(document.querySelectorAll('#tela-ficha .seg button, #tela-ficha .chip, #vol button'), function (b) { b.classList.remove('on'); });
+    $('bloco-limpeza').classList.add('hidden'); $('bloco-apreensao').classList.add('hidden'); $('bloco-residuo').classList.remove('hidden');
+    $('vol-desc').textContent = 'Até 1 m³: sacolas • 1–5 m³: caminhonete • acima de 5 m³: caminhão';
+    $('f-erros').classList.add('hidden');
+    renderFotos();
+
+    var hist = (S.status[n] || []).slice().sort(function (a, b) { return a.s - b.s; });
+    var ant = $('f-anterior');
+    if (hist.length) {
+      ant.innerHTML = '<b>Visitas anteriores:</b><br>' + hist.map(function (h) {
+        return 'S' + h.s + ' – ' + h.d + ' • Equipe ' + esc(h.e) + ' • Volume <b>' + h.v + '</b>';
+      }).join('<br>');
+      ant.classList.remove('hidden');
+    } else ant.classList.add('hidden');
+
+    show('tela-ficha');
+    pegarGPS();
+  }
+
+  function marcarSeg(grupo, botao) {
+    Array.prototype.forEach.call(grupo.querySelectorAll('button'), function (b) { b.classList.toggle('on', b === botao); });
+    var campo = grupo.getAttribute('data-campo'), val = botao.textContent.trim();
+    S.form[campo] = val;
+    if (campo === 'lixo') {
+      $('bloco-residuo').classList.toggle('hidden', val === 'Não');
+      if (val === 'Não') { definirVolume(0); S.form.residuos = []; Array.prototype.forEach.call(document.querySelectorAll('[data-multi] .chip'), function (c) { c.classList.remove('on'); }); }
+      else if (S.form.volume === 0) { definirVolume(null); }
+    }
+    if (campo === 'limpeza') $('bloco-limpeza').classList.toggle('hidden', val !== 'Sim');
+    if (campo === 'apreensao') $('bloco-apreensao').classList.toggle('hidden', val !== 'Sim');
+  }
+
+  function definirVolume(v) {
+    S.form.volume = v;
+    Array.prototype.forEach.call(document.querySelectorAll('#vol button'), function (b) { b.classList.toggle('on', v !== null && +b.getAttribute('data-v') === v); });
+    $('vol-desc').textContent = v === null || v === undefined ? 'Até 1 m³: sacolas • 1–5 m³: caminhonete • acima de 5 m³: caminhão' : VOL_DESC[v];
+  }
+
+  /* ---------- GPS ---------- */
+  function pegarGPS() {
+    $('gps-v').textContent = 'Obtendo localização…'; $('gps-p').textContent = '';
+    if (!navigator.geolocation) { $('gps-v').textContent = 'GPS indisponível neste aparelho'; return; }
+    navigator.geolocation.getCurrentPosition(function (pos) {
+      S.gps = { lat: pos.coords.latitude.toFixed(6), lng: pos.coords.longitude.toFixed(6), prec: Math.round(pos.coords.accuracy) };
+      $('gps-v').textContent = S.gps.lat + ', ' + S.gps.lng;
+      $('gps-p').textContent = 'Precisão aproximada: ' + S.gps.prec + ' m' + (S.gps.prec > 50 ? ' (baixa – tente atualizar ao ar livre)' : '');
+    }, function (err) {
+      $('gps-v').textContent = 'Não foi possível obter o GPS';
+      $('gps-p').textContent = err.code === 1 ? 'Permita o acesso à localização no navegador.' : 'Tente novamente ao ar livre.';
+    }, { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
+  }
+
+  /* ---------- Fotos (redução + carimbo) ---------- */
+  function processarFoto(arquivo) {
+    return new Promise(function (ok, falha) {
+      var url = URL.createObjectURL(arquivo), img = new Image();
+      img.onload = function () {
+        var max = 1600, w = img.naturalWidth, h = img.naturalHeight, f = Math.min(1, max / Math.max(w, h));
+        w = Math.round(w * f); h = Math.round(h * f);
+        var c = document.createElement('canvas'); c.width = w; c.height = h;
+        var ctx = c.getContext('2d'); ctx.drawImage(img, 0, 0, w, h);
+        var agora = new Date(), e = escala(S.data);
+        var l1 = 'GCM APGO • Ponto ' + pad(S.ponto.n) + ' • ' + ($('f-equipe').value) + ' • S' + $('f-semana').value + ' • ' + e.dia;
+        var l2 = isoBR(S.data) + ' ' + pad(agora.getHours()) + ':' + pad(agora.getMinutes()) + (S.gps ? ' • ' + S.gps.lat + ', ' + S.gps.lng : ' • GPS indisponível');
+        var fs = Math.max(14, Math.round(w / 45)), faixa = fs * 2.9;
+        ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(0, h - faixa, w, faixa);
+        ctx.fillStyle = '#FFFFFF'; ctx.font = 'bold ' + fs + 'px Arial, sans-serif'; ctx.textBaseline = 'middle';
+        ctx.fillText(l1, fs * 0.7, h - faixa + fs * 0.95);
+        ctx.font = fs + 'px Arial, sans-serif';
+        ctx.fillText(l2, fs * 0.7, h - faixa + fs * 2.1);
+        URL.revokeObjectURL(url);
+        ok(c.toDataURL('image/jpeg', 0.72));
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); falha(new Error('Imagem inválida')); };
+      img.src = url;
+    });
+  }
+
+  function renderFotos() {
+    var html = '';
+    S.fotos.forEach(function (src, i) { html += '<div class="f"><img src="' + src + '" alt="Foto ' + (i + 1) + '"><button class="x" data-i="' + i + '" aria-label="Remover">×</button></div>'; });
+    $('fotos').innerHTML = html;
+    Array.prototype.forEach.call(document.querySelectorAll('#fotos .x'), function (b) {
+      b.addEventListener('click', function () { S.fotos.splice(+b.getAttribute('data-i'), 1); renderFotos(); });
+    });
+  }
+
+  /* ---------- Validação e envio ---------- */
+  function validar() {
+    var f = S.form, erros = [];
+    if (!f.lixo) erros.push('Informe se existe lixo no local.');
+    if (!f.area) erros.push('Informe o tipo de área.');
+    if (f.lixo === 'Sim' && (!f.residuos || !f.residuos.length)) erros.push('Marque o tipo de resíduo.');
+    if (f.volume === undefined || f.volume === null) erros.push('Selecione o volume (0 a 3).');
+    if (f.lixo === 'Sim' && f.volume === 0) erros.push('Há lixo no local: o volume não pode ser 0.');
+    if (!f.tempo) erros.push('Informe a condição do tempo.');
+    if (!f.limpeza) erros.push('Informe se houve limpeza pela Prefeitura.');
+    if (!f.flagrante) erros.push('Informe se houve flagrante.');
+    if (!f.apreensao) erros.push('Informe se houve apreensão de veículo.');
+    if (f.apreensao === 'Sim' && !$('f-placa').value.trim()) erros.push('Informe a placa/tipo do veículo apreendido.');
+    if (f.apreensao === 'Sim' && !$('f-rai').value.trim()) erros.push('Informe o nº do RAI/BO.');
+    if (S.fotos.length < 3) erros.push('Registre no mínimo 3 fotos (faltam ' + (3 - S.fotos.length) + ').');
+    return erros;
+  }
+
+  function enviar() {
+    var erros = validar(), box = $('f-erros');
+    if (erros.length) { box.innerHTML = erros.map(esc).join('<br>'); box.classList.remove('hidden'); box.scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
+    box.classList.add('hidden');
+    var sem = +$('f-semana').value, n = S.ponto.n;
+    if (visitaNaSemana(n, sem) && !confirm('Este ponto já tem registro na Semana ' + sem + '. Enviar mesmo assim? (o último envio será o considerado)')) return;
+    if (!S.gps && !confirm('A localização GPS não foi obtida. Enviar mesmo assim?')) return;
+
+    var agora = new Date(), f = S.form;
+    var dl = $('f-data-limpeza').value;
+    var payload = {
+      id: uid(), ponto: n, data: S.data, hora: pad(agora.getHours()) + ':' + pad(agora.getMinutes()),
+      semana: sem, dia: escala(S.data).dia,
+      equipe: $('f-equipe').value, agentes: S.agentes,
+      lat: S.gps ? S.gps.lat : '', lng: S.gps ? S.gps.lng : '', precisao: S.gps ? S.gps.prec : '',
+      lixo: f.lixo, area: f.area, residuos: f.lixo === 'Sim' ? f.residuos : [], volume: f.volume,
+      limpeza: f.limpeza, dataLimpeza: (f.limpeza === 'Sim' && dl) ? isoBR(dl) : '',
+      flagrante: f.flagrante, apreensao: f.apreensao,
+      placa: f.apreensao === 'Sim' ? $('f-placa').value.trim().toUpperCase() : '',
+      rai: f.apreensao === 'Sim' ? $('f-rai').value.trim() : '',
+      tempo: f.tempo, obs: $('f-obs').value.trim(),
+      fotos: S.fotos.map(function (d) { return d.split(',')[1]; })
+    };
+    overlay('Enviando visita e ' + payload.fotos.length + ' fotos…');
+    servidor('enviarVisita', S.pin, payload).then(function (r) {
+      overlay();
+      if (r && r.ok) {
+        registrarLocal(payload);
+        toast('✓ Visita do ponto ' + pad(n) + ' enviada' + (r.comparacao ? ' • ' + r.comparacao : ''), 4000);
+        show('tela-inicio'); renderInicio(); atualizarStatus(true);
+      } else {
+        box.textContent = (r && r.msg) || 'O servidor recusou o envio.'; box.classList.remove('hidden');
+      }
+    }, function () {
+      overlay();
+      guardarNaFila(payload).then(function () {
+        registrarLocal(payload);
+        toast('Sem conexão: visita salva no aparelho e será enviada automaticamente.', 5000);
+        show('tela-inicio'); renderInicio(); atualizarFila();
+      }, function () {
+        box.textContent = 'Sem conexão e não foi possível salvar no aparelho. Não feche esta tela e tente de novo.'; box.classList.remove('hidden');
+      });
+    });
+  }
+
+  function registrarLocal(p) {
+    (S.status[p.ponto] = S.status[p.ponto] || []).push({ s: p.semana, v: p.volume, d: isoBR(p.data), e: p.equipe });
+  }
+
+  /* ---------- Fila offline (IndexedDB) ---------- */
+  var DB = null;
+  function abrirDB() {
+    return new Promise(function (ok, falha) {
+      if (DB) { ok(DB); return; }
+      try {
+        var req = indexedDB.open('gcm_descarte', 1);
+        req.onupgradeneeded = function () { req.result.createObjectStore('fila', { keyPath: 'id' }); };
+        req.onsuccess = function () { DB = req.result; ok(DB); };
+        req.onerror = function () { falha(req.error); };
+      } catch (e) { falha(e); }
+    });
+  }
+  function filaOp(modo, fn) {
+    return abrirDB().then(function (db) {
+      return new Promise(function (ok, falha) {
+        var tx = db.transaction('fila', modo), st = tx.objectStore('fila'), r = fn(st);
+        tx.oncomplete = function () { ok(r && r.result); };
+        tx.onerror = function () { falha(tx.error); };
+      });
+    });
+  }
+  function guardarNaFila(p) { return filaOp('readwrite', function (st) { return st.put(p); }); }
+  function listarFila() { return filaOp('readonly', function (st) { return st.getAll(); }); }
+  function removerDaFila(id) { return filaOp('readwrite', function (st) { return st.delete(id); }); }
+
+  function atualizarFila() {
+    listarFila().then(function (itens) {
+      var av = $('fila-aviso');
+      if (itens && itens.length) {
+        av.innerHTML = '<b>' + itens.length + ' visita(s) aguardando envio.</b> Serão enviadas quando houver conexão. <button class="btn small sec" id="bt-reenviar" style="margin-top:8px">Enviar agora</button>';
+        av.classList.remove('hidden');
+        $('bt-reenviar').addEventListener('click', function () { processarFila(true); });
+      } else av.classList.add('hidden');
+    }, function () { /* sem IndexedDB */ });
+  }
+
+  var processando = false;
+  function processarFila(manual) {
+    if (processando || !S.pin) return;
+    listarFila().then(function (itens) {
+      if (!itens || !itens.length) return;
+      processando = true;
+      if (manual) overlay('Enviando ' + itens.length + ' visita(s) pendente(s)…');
+      var enviados = 0;
+      var proximo = function (i) {
+        if (i >= itens.length) {
+          processando = false; overlay(); atualizarFila();
+          if (enviados) { toast(enviados + ' visita(s) pendente(s) enviada(s).'); atualizarStatus(true); }
+          return;
+        }
+        servidor('enviarVisita', S.pin, itens[i]).then(function (r) {
+          if (r && r.ok) { enviados++; removerDaFila(itens[i].id).then(function () { proximo(i + 1); }); }
+          else proximo(i + 1);
+        }, function () { processando = false; overlay(); if (manual) toast('Ainda sem conexão.'); atualizarFila(); });
+      };
+      proximo(0);
+    }, function () {});
+  }
+
+  /* ---------- Eventos ---------- */
+  $('bt-entrar').addEventListener('click', entrar);
+  $('in-pin').addEventListener('keydown', function (e) { if (e.key === 'Enter') entrar(); });
+  $('bt-sair').addEventListener('click', function () { ls('gcm_pin', null); S.pin = ''; $('in-pin').value = ''; show('tela-login'); });
+  $('in-data').addEventListener('change', function () { if (this.value) { S.data = this.value; renderInicio(); } });
+  $('bt-atualizar').addEventListener('click', function () { atualizarStatus(false); processarFila(true); });
+  $('bt-outro').addEventListener('click', function () { $('outro-box').classList.toggle('hidden'); });
+  $('bt-outro-ir').addEventListener('click', function () { abrirFicha(+$('sel-outro').value); });
+  $('bt-voltar').addEventListener('click', function () {
+    if ((S.fotos.length || Object.keys(S.form).length > 1) && !confirm('Sair da ficha? Os dados não enviados serão perdidos.')) return;
+    show('tela-inicio'); renderInicio();
+  });
+  $('bt-gps').addEventListener('click', pegarGPS);
+  $('bt-enviar').addEventListener('click', enviar);
+
+  Array.prototype.forEach.call(document.querySelectorAll('#tela-ficha .seg'), function (g) {
+    Array.prototype.forEach.call(g.querySelectorAll('button'), function (b) { b.addEventListener('click', function () { marcarSeg(g, b); }); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-multi] .chip'), function (c) {
+    c.addEventListener('click', function () {
+      c.classList.toggle('on');
+      S.form.residuos = Array.prototype.map.call(document.querySelectorAll('[data-multi] .chip.on'), function (x) { return x.textContent.trim(); });
+    });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('#vol button'), function (b) {
+    b.addEventListener('click', function () { definirVolume(+b.getAttribute('data-v')); });
+  });
+  $('in-foto').addEventListener('change', function () {
+    var arquivos = Array.prototype.slice.call(this.files || []); this.value = '';
+    if (!arquivos.length) return;
+    overlay('Processando foto(s)…');
+    arquivos.reduce(function (p, a) { return p.then(function () { return processarFoto(a).then(function (d) { S.fotos.push(d); }); }); }, Promise.resolve())
+      .then(function () { overlay(); renderFotos(); }, function () { overlay(); renderFotos(); toast('Não foi possível ler uma das fotos.'); });
+  });
+  window.addEventListener('online', function () { processarFila(false); });
+  setInterval(function () { processarFila(false); }, 60000);
+
+  /* ---------- Início ---------- */
+  $('in-agentes').value = ls('gcm_agentes') || '';
+  var pinSalvo = ls('gcm_pin');
+  if (pinSalvo) { $('in-pin').value = pinSalvo; if ($('in-agentes').value) entrar(); }
+})();
+</script>
+</body>
+</html>
