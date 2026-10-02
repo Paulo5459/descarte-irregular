@@ -101,6 +101,8 @@ function onOpen() {
     .addItem('Exportar cópia em Excel (.xlsx) para o Drive', 'exportarExcel')
     .addItem('Abrir pasta de fotos', 'abrirPastaFotos')
     .addItem('Alterar PIN de acesso do aplicativo', 'alterarPin')
+    .addSeparator()
+    .addItem('Limpar registros (apagar visitas e fotos)', 'limparRegistros')
     .addToUi();
 }
 
@@ -316,6 +318,23 @@ function alterarPin() {
   if (novo.length < 4) { ui.alert('Use pelo menos 4 caracteres.'); return; }
   PropertiesService.getScriptProperties().setProperty('PIN', novo);
   ui.alert('PIN alterado. Informe o novo PIN às equipes.');
+}
+
+/** Apaga todas as visitas lançadas e manda as fotos para a lixeira do Drive (uso após testes). */
+function limparRegistros() {
+  const ui = SpreadsheetApp.getUi();
+  const sh = SpreadsheetApp.getActive().getSheetByName(ABA.VISITAS);
+  if (!sh) { ui.alert('A planilha ainda não foi configurada.'); return; }
+  const n = Math.max(0, sh.getLastRow() - 1);
+  const r = ui.alert('Limpar registros',
+    'Serão apagadas ' + n + ' visita(s) da aba Visitas e as pastas de fotos irão para a lixeira do Drive.\n\nDeseja continuar?',
+    ui.ButtonSet.YES_NO);
+  if (r !== ui.Button.YES) return;
+  if (n) sh.getRange(2, 1, n, sh.getMaxColumns()).clearContent();
+  let pastas = 0;
+  const it = pastaRaiz_().getFolders();
+  while (it.hasNext()) { it.next().setTrashed(true); pastas++; }
+  ui.alert('Registros limpos: ' + n + ' visita(s) apagada(s) e ' + pastas + ' pasta(s) de fotos enviada(s) para a lixeira.');
 }
 
 /* ===================== MONTAGEM DA PLANILHA ===================== */
