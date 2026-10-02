@@ -107,8 +107,18 @@ function onOpen() {
 }
 
 /* ===================== APLICATIVO DA WEB ===================== */
+// Endereço público do aplicativo (GitHub Pages). O link /exec serve só de servidor (doPost).
+const URL_APP = 'https://paulo5459.github.io/descarte-irregular/';
+
 function doGet() {
-  return HtmlService.createHtmlOutputFromFile('Index')
+  // O Google sempre mostra a faixa "criado por um usuário do Google Apps Script" nas páginas do /exec,
+  // por isso quem abre o /exec é encaminhado para o endereço do aplicativo, que não tem a faixa.
+  return HtmlService.createHtmlOutput(
+    '<base target="_top"><div style="font-family:Arial,sans-serif;text-align:center;padding:48px 16px">' +
+    '<p style="font-size:18px;color:#1F3864"><b>GCM APGO – Descarte Irregular</b></p>' +
+    '<a href="' + URL_APP + '" style="display:inline-block;background:#1F3864;color:#fff;font-weight:bold;' +
+    'padding:16px 28px;border-radius:10px;text-decoration:none;font-size:18px">Abrir o aplicativo</a></div>' +
+    '<script>try{window.top.location.href="' + URL_APP + '";}catch(e){}</script>')
     .setTitle('GCM APGO – Descarte Irregular')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1, viewport-fit=cover')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
