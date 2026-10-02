@@ -275,12 +275,28 @@
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
 
   /* ---------- Chamada ao servidor (Apps Script) ---------- */
+  // Link /exec do App da Web: usado quando o aplicativo é aberto fora do Google (GitHub Pages).
+  var API_URL = 'https://script.google.com/macros/s/AKfycbxz97gX0Cm1AKZ6QKK9B64X1WFwfV_OI0V9_ZpuACUhb2gls1D7okw5_LSDtj83aTDvgw/exec';
   function servidor(fn) {
     var args = Array.prototype.slice.call(arguments, 1);
-    return new Promise(function (ok, falha) {
-      if (!window.google || !google.script || !google.script.run) { falha(new Error('sem-conexao')); return; }
-      var r = google.script.run.withSuccessHandler(ok).withFailureHandler(falha);
-      r[fn].apply(r, args);
+    if (window.google && google.script && google.script.run) {
+      return new Promise(function (ok, falha) {
+        var r = google.script.run.withSuccessHandler(ok).withFailureHandler(falha);
+        r[fn].apply(r, args);
+      });
+    }
+    if (location.protocol === 'file:') return Promise.reject(new Error('sem-conexao'));
+    // text/plain evita a pré-verificação CORS, que o Apps Script não responde
+    return fetch(API_URL, {
+      method: 'POST', redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ fn: fn, args: args })
+    }).then(function (resp) {
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      return resp.json();
+    }).then(function (j) {
+      if (j.erro) throw new Error(j.erro);
+      return j.r;
     });
   }
 
@@ -324,7 +340,7 @@
       overlay();
       var em = (err && err.message) || String(err || '');
       if (em === 'sem-conexao') {
-        msg.innerHTML = 'Este arquivo foi aberto fora do Google. Abra o <b>link do App da Web</b> (termina em <b>/exec</b>) gerado em Implantar → Nova implantação.';
+        msg.innerHTML = 'Este arquivo foi aberto direto do computador. Abra o aplicativo pelo <b>link enviado à equipe</b>.';
         msg.classList.remove('hidden'); return;
       }
       if (navigator.onLine && em) {

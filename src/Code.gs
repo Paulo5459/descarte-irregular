@@ -112,6 +112,20 @@ function doGet() {
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
+/** Chamadas do aplicativo quando ele é aberto fora do Google (GitHub Pages): {fn, args} em JSON. */
+function doPost(e) {
+  const API = { getConfig: getConfig, getStatus: getStatus, enviarVisita: enviarVisita };
+  let saida;
+  try {
+    const req = JSON.parse(e.postData.contents);
+    if (!API[req.fn]) throw new Error('Função inválida.');
+    saida = { r: API[req.fn].apply(null, req.args || []) };
+  } catch (err) {
+    saida = { erro: String((err && err.message) || err) };
+  }
+  return ContentService.createTextOutput(JSON.stringify(saida)).setMimeType(ContentService.MimeType.JSON);
+}
+
 function pinValido_(pin) {
   const atual = PropertiesService.getScriptProperties().getProperty('PIN') || CFG.PIN_PADRAO;
   return String(pin || '').trim() === String(atual).trim();
