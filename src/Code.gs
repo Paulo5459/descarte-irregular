@@ -97,6 +97,7 @@ function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('Estudo Descarte')
     .addItem('1. Configurar planilha (primeira vez)', 'configurarPlanilha')
+    .addItem('2. Recalcular análises (corrige fórmulas e links das fotos)', 'recalcularAnalises')
     .addSeparator()
     .addItem('Exportar cópia em Excel (.xlsx) para o Drive', 'exportarExcel')
     .addItem('Abrir pasta de fotos', 'abrirPastaFotos')
@@ -226,7 +227,7 @@ function enviarVisita(pin, v) {
         const blob = Utilities.newBlob(Utilities.base64Decode(b64), 'image/jpeg', pref + (i + 1) + '.jpg');
         pastaVisita.createFile(blob);
       });
-      linkFotos = '=HYPERLINK("' + pastaVisita.getUrl() + '","Abrir ' + fotos.length + ' foto(s)")';
+      linkFotos = linkFotos_(pastaVisita.getUrl(), fotos.length);
     }
 
     const dt = v.data.split('-'); // yyyy-mm-dd
@@ -240,7 +241,7 @@ function enviarVisita(pin, v) {
       v.agentes,
       ponto[0],
       ponto[1],
-      ponto[4],
+      regionalDoPonto_(ponto),
       v.lat === '' ? '' : Number(v.lat),
       v.lng === '' ? '' : Number(v.lng),
       v.precisao === '' ? '' : Number(v.precisao),
@@ -407,11 +408,15 @@ function montarVisitas_(ss) {
 
 function montarPontos_(ss) {
   const sh = aba_(ss, ABA.PONTOS);
+  const regAtual = {};
+  if (sh.getLastRow() > 1) {
+    sh.getRange(2, 1, sh.getLastRow() - 1, 5).getValues().forEach(r => { if (r[0] && r[4] !== '') regAtual[Number(r[0])] = r[4]; });
+  }
   sh.clear();
   cabecalho_(sh, ['Nº', 'Endereço', 'Situação (documento SDU)', 'Grau de necessidade', 'Regional', 'Dia da visita']);
   const linhas = PONTOS.map(p => {
     const g = CFG.GRUPOS.findIndex(x => p[0] >= x[0] && p[0] <= x[1]);
-    return [p[0], p[1], p[2], p[3], p[4], CFG.DIAS_SEMANA[g]];
+    return [p[0], p[1], p[2], p[3], regAtual[p[0]] !== undefined ? regAtual[p[0]] : p[4], CFG.DIAS_SEMANA[g]];
   });
   sh.getRange(2, 1, linhas.length, 6).setValues(linhas).setWrap(true).setVerticalAlignment('middle');
   [45, 420, 160, 170, 120, 95].forEach((w, i) => sh.setColumnWidth(i + 1, w));
@@ -438,7 +443,13 @@ function montarEscala_(ss) {
     }
   }
   sh.getRange(2, 1, linhas.length, 6).setValues(linhas);
-  const f = linhas.map((l, i) => [l[5] === '' ? '' : '=COUNTIF(' + ABA.VISITAS + '!$B:$B,$A' + (i + 2) + ')']);
+  const CS = "'" + ABA.CONSOL + "'!";
+  const f = linhas.map((l, k) => {
+    if (l[5] === '') return [''];
+    const g = CFG.GRUPOS[(l[0].getDay() + 6) % 7], w = Math.floor(k / 7) + 1;
+    return [converterFormula_('=COUNTIFS(' + CS + '$A$2:$A$42;">=' + g[0] + '";' + CS + '$A$2:$A$42;"<=' + g[1] + '";' +
+      'INDEX(' + CS + '$F$2:$I$42;0;' + w + ');">=0")')];
+  });
   sh.getRange(2, 7, f.length, 1).setFormulas(f);
   sh.getRange('A2:A').setNumberFormat('dd/MM/yyyy');
   [95, 55, 90, 110, 220, 120, 130].forEach((w, i) => sh.setColumnWidth(i + 1, w));
@@ -462,12 +473,13 @@ function montarConsolidacao_(ss) {
   PONTOS.forEach((p, i) => {
     const r = i + 2;
     const g = CFG.GRUPOS.findIndex(x => p[0] >= x[0] && p[0] <= x[1]);
-    linhas.push([p[0], p[1], p[4], CFG.DIAS_SEMANA[g]]);
+    linhas.push([p[0], p[1], CFG.DIAS_SEMANA[g]]);
     const semana = w => '=IFERROR(INDEX(FILTER(' + V + '$Q:$Q;' + V + '$H:$H=$A' + r + ';' + V + '$D:$D=' + w + ');COUNTIFS(' + V + '$H:$H;$A' + r + ';' + V + '$D:$D;' + w + '));"")';
     formulas.push([
+      '=IFERROR(VLOOKUP($A' + r + ';' + ABA.PONTOS + '!$A:$E;5;0);"")',
       '=IFERROR(INDEX(FILTER(' + V + '$O:$O;' + V + '$H:$H=$A' + r + ');COUNTIF(' + V + '$H:$H;$A' + r + '));"")',
       semana(1), semana(2), semana(3), semana(4),
-      '=COUNTIF(' + V + '$H:$H;$A' + r + ')',
+      '=COUNT(F' + r + ':I' + r + ')',
       '=IF(COUNTIFS(' + V + '$H:$H;$A' + r + ';' + V + '$S:$S;"Sim")>0;"Sim";"Não")',
       '=IF(COUNTIFS(' + V + '$H:$H;$A' + r + ';' + V + '$V:$V;"Sim")>0;"Sim";"Não")',
       '=IF(OR(F' + r + '="";I' + r + '="");IF(J' + r + '=0;"SEM DADOS";"EM ANDAMENTO");' +
@@ -476,8 +488,10 @@ function montarConsolidacao_(ss) {
         'IF(I' + r + '<F' + r + ';"DIMINUIU";IF(I' + r + '=F' + r + ';"MANTEVE";"AUMENTOU")))))'
     ]);
   });
-  sh.getRange(2, 1, linhas.length, 4).setValues(linhas);
-  sh.getRange(2, 5, formulas.length, 9).setFormulas(formulas.map(f => f.map(converterFormula_)));
+  sh.getRange(2, 1, linhas.length, 2).setValues(linhas.map(l => [l[0], l[1]]));
+  sh.getRange(2, 4, linhas.length, 1).setValues(linhas.map(l => [l[2]]));
+  sh.getRange(2, 3, formulas.length, 1).setFormulas(formulas.map(f => [converterFormula_(f[0])]));
+  sh.getRange(2, 5, formulas.length, 9).setFormulas(formulas.map(f => f.slice(1).map(converterFormula_)));
   [45, 380, 110, 50, 130, 45, 45, 45, 45, 85, 95, 100, 125].forEach((w, i) => sh.setColumnWidth(i + 1, w));
   sh.getRange(2, 2, linhas.length, 1).setWrap(true);
   sh.getRange(2, 1, linhas.length, 1).setHorizontalAlignment('center');
@@ -529,7 +543,7 @@ function montarIndicadores_(ss) {
     ['Pontos com as 4 visitas', '=COUNTIF(' + CS + 'J2:J42;">=4")', 41, '']
   ]);
   for (let i = 0; i < 3; i++) {
-    sh.getRange(r0 + i, 4).setFormula('=IFERROR(B' + (r0 + i) + '/C' + (r0 + i) + ',0)').setNumberFormat('0%');
+    sh.getRange(r0 + i, 4).setFormula(converterFormula_('=IFERROR(B' + (r0 + i) + '/C' + (r0 + i) + ';0)')).setNumberFormat('0%');
   }
 
   const tend = ['ELIMINADO', 'DIMINUIU', 'MANTEVE', 'AUMENTOU', 'NOVO FOCO', 'SEM DESCARTE', 'EM ANDAMENTO', 'SEM DADOS'];
@@ -554,14 +568,14 @@ function montarIndicadores_(ss) {
   const r4 = bloco('Visitas por equipe', ['Equipe', 'Realizadas', 'Previstas', '%'],
     CFG.EQUIPES.map(e => [e, '=COUNTIF(' + V + 'F2:F;"' + e + '")', 41, '']));
   CFG.EQUIPES.forEach((e, i) => {
-    sh.getRange(r4 + i, 4).setFormula('=IFERROR(B' + (r4 + i) + '/C' + (r4 + i) + ',0)').setNumberFormat('0%');
+    sh.getRange(r4 + i, 4).setFormula(converterFormula_('=IFERROR(B' + (r4 + i) + '/C' + (r4 + i) + ';0)')).setNumberFormat('0%');
     sh.getRange(r4 + i, 1).setBackground(COR_EQUIPE[e]).setFontWeight('bold');
   });
 
   const r5 = bloco('Visitas por semana', ['Semana', 'Realizadas', 'Previstas', '%'],
     [1, 2, 3, 4].map(w => ['Semana ' + w, '=COUNTIF(' + V + 'D2:D;' + w + ')', 41, '']));
   for (let i = 0; i < 4; i++) {
-    sh.getRange(r5 + i, 4).setFormula('=IFERROR(B' + (r5 + i) + '/C' + (r5 + i) + ',0)').setNumberFormat('0%');
+    sh.getRange(r5 + i, 4).setFormula(converterFormula_('=IFERROR(B' + (r5 + i) + '/C' + (r5 + i) + ';0)')).setNumberFormat('0%');
   }
 
   bloco('Pontos monitorados (documento SDU)', ['Ponto', 'Tendência'], [
@@ -580,14 +594,132 @@ function montarIndicadores_(ss) {
 }
 
 /* ===================== UTILITÁRIOS ===================== */
-// As fórmulas são escritas com ";" e convertidas para "," (padrão aceito pelo Apps Script).
+// As fórmulas são escritas com ";" (padrão brasileiro) e só viram "," se a planilha estiver
+// num idioma que use vírgula (ex.: inglês). O separador é testado na própria planilha.
+function separador_() {
+  const props = PropertiesService.getScriptProperties();
+  const ss = SpreadsheetApp.getActive();
+  const chave = 'SEP_' + ss.getSpreadsheetLocale();
+  const salvo = props.getProperty(chave);
+  if (salvo) return salvo;
+  const tmp = ss.insertSheet('_teste_sep_' + Date.now());
+  let sep = ';';
+  try {
+    tmp.getRange('A1').setFormula('=SUM(1,2)');
+    SpreadsheetApp.flush();
+    if (tmp.getRange('A1').getValue() === 3) sep = ',';
+  } catch (e) {
+    sep = ';';
+  } finally {
+    ss.deleteSheet(tmp);
+  }
+  props.setProperty(chave, sep);
+  return sep;
+}
+
 function converterFormula_(f) {
+  const sep = separador_();
+  if (sep === ';') return f;
   let out = '', aspas = false;
   for (let i = 0; i < f.length; i++) {
     const ch = f.charAt(i);
     if (ch === '"') aspas = !aspas;
-    out += (!aspas && ch === ';') ? ',' : ch;
+    out += (!aspas && ch === ';') ? sep : ch;
   }
+  return out;
+}
+
+function linkFotos_(url, n) {
+  return converterFormula_('=HYPERLINK("' + url + '";"Abrir ' + n + ' foto(s)")');
+}
+
+/** Regional atual do ponto: lê a aba Pontos (onde pode ser editada); senão, usa a lista do código. */
+function regionalDoPonto_(ponto) {
+  const sh = SpreadsheetApp.getActive().getSheetByName(ABA.PONTOS);
+  if (sh && sh.getLastRow() > 1) {
+    const v = sh.getRange(2, 1, sh.getLastRow() - 1, 5).getValues();
+    for (let i = 0; i < v.length; i++) if (Number(v[i][0]) === ponto[0] && v[i][4] !== '') return v[i][4];
+  }
+  return ponto[4];
+}
+
+/**
+ * Refaz as abas de análise (Escala, Consolidação, Indicadores) sem tocar nas visitas,
+ * conserta o link das fotos das visitas já lançadas e a comparação com a visita anterior.
+ */
+function recalcularAnalises() {
+  const ss = SpreadsheetApp.getActive();
+  PropertiesService.getScriptProperties().deleteProperty('SEP_' + ss.getSpreadsheetLocale());
+  montarPontos_(ss);
+  montarEscala_(ss);
+  montarConsolidacao_(ss);
+  montarIndicadores_(ss);
+  const r = repararVisitas_(ss);
+  SpreadsheetApp.flush();
+  ss.setActiveSheet(ss.getSheetByName(ABA.IND));
+  SpreadsheetApp.getUi().alert('Análises recalculadas.\n\nLinks de fotos corrigidos: ' + r.links +
+    (r.semPasta ? '\nVisitas sem pasta de fotos encontrada: ' + r.semPasta : '') +
+    '\nComparações com a visita anterior revistas: ' + r.comparacoes);
+}
+
+function repararVisitas_(ss) {
+  const sh = ss.getSheetByName(ABA.VISITAS);
+  const out = { links: 0, semPasta: 0, comparacoes: 0 };
+  if (!sh || sh.getLastRow() < 2) return out;
+  const n = sh.getLastRow() - 1;
+  const dados = sh.getRange(2, 1, n, CAB_VISITAS.length).getValues();
+  const tz = ss.getSpreadsheetTimeZone();
+  const raiz = pastaRaiz_();
+  const cacheP = {};
+  const links = [], comps = [];
+  // comparação: volume desta visita x último envio do mesmo ponto numa semana anterior
+  const volSemana = {}; // "ponto_semana" -> {t, v} do envio mais recente daquela semana
+  dados.forEach(r => {
+    const k = Number(r[C.PONTO]) + '_' + Number(r[C.SEMANA]), t = new Date(r[0]).getTime();
+    if (!volSemana[k] || t >= volSemana[k].t) volSemana[k] = { t: t, v: Number(r[C.VOLUME]) };
+  });
+  const compPorLinha = {};
+  dados.forEach((r, i) => {
+    const p = Number(r[C.PONTO]), s = Number(r[C.SEMANA]), v = Number(r[C.VOLUME]);
+    let c = '1ª visita';
+    for (let w = s - 1; w >= 1; w--) {
+      const ant = volSemana[p + '_' + w];
+      if (!ant) continue;
+      if (ant.v > 0 && v === 0) c = 'Eliminado';
+      else if (v > ant.v) c = 'Aumentou';
+      else if (v < ant.v) c = 'Diminuiu';
+      else c = 'Manteve';
+      break;
+    }
+    compPorLinha[i] = c;
+  });
+
+  dados.forEach((r, i) => {
+    // comparação
+    const c = compPorLinha[i];
+    if (c !== r[17]) out.comparacoes++;
+    comps.push([c]);
+    // link das fotos
+    const ponto = PONTOS.find(p => p[0] === Number(r[C.PONTO]));
+    const nFotos = Number(r[25]) || 0;
+    let link = '';
+    if (ponto && nFotos && r[C.DATA] instanceof Date) {
+      const nomePonto = 'Ponto ' + pad2_(ponto[0]) + ' – ' + ponto[1].substring(0, 60);
+      if (!(nomePonto in cacheP)) { const it = raiz.getFoldersByName(nomePonto); cacheP[nomePonto] = it.hasNext() ? it.next() : null; }
+      const pp = cacheP[nomePonto];
+      const nomeSem = 'Semana ' + Number(r[C.SEMANA]) + ' – ' + Utilities.formatDate(r[C.DATA], tz, 'dd-MM-yyyy');
+      const it2 = pp ? pp.getFoldersByName(nomeSem) : null;
+      if (it2 && it2.hasNext()) { link = linkFotos_(it2.next().getUrl(), nFotos); out.links++; }
+      else out.semPasta++;
+    }
+    links.push([link]);
+  });
+  sh.getRange(2, 18, n, 1).setValues(comps);
+  const faixa = sh.getRange(2, 27, n, 1);
+  links.forEach((l, i) => {
+    const cel = faixa.getCell(i + 1, 1);
+    if (l[0]) cel.setFormula(l[0]); else cel.setValue('');
+  });
   return out;
 }
 
